@@ -22,7 +22,16 @@ public:
 	{ return static_cast<T*>(this); }
 
 protected:
+	virtual void DrawDebug(const ASteeringAgent& Agent) const;
+
+protected:
 	FTargetData Target;
 };
 
 // Your own SteeringBehaviors should follow here...
+
+class Seek : public ISteeringBehavior
+{
+	public:
+		SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
+};
