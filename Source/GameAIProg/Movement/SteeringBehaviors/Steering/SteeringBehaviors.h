@@ -36,7 +36,7 @@ class Seek : public ISteeringBehavior
 		SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
 };
 
-class Flee : public ISteeringBehavior
+class Flee : public Seek
 {
 	public:
 		SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
@@ -48,4 +48,10 @@ class Arrive : public Seek
 		SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
 private:
 	float m_originalMaxSpeed{ -1 };
+};
+
+class Face : public ISteeringBehavior
+{
+	public:
+		SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
 };

@@ -31,11 +31,9 @@ void ASteeringAgent::Tick(float DeltaTime)
 		SteeringOutput output = SteeringBehavior->CalculateSteering(DeltaTime, *this);
 		AddMovementInput(FVector{output.LinearVelocity, 0.f});
 
-		if (FMath::Abs(output.AngularVelocity) > KINDA_SMALL_NUMBER)
-		{
-			const FVector Right = GetActorRightVector();
-			AddMovementInput(Right, output.AngularVelocity * DeltaTime);
-		}
+		const float YawDeltaDegrees = output.AngularVelocity * DeltaTime;
+
+		AddActorLocalRotation(FRotator(0.f, YawDeltaDegrees, 0.f), false, nullptr, ETeleportType::None);
 	}
 }
 
