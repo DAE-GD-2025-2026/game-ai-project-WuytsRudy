@@ -1,6 +1,7 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "SteeringAgent.h"
+#include "AIController.h"
 
 
 // Sets default values
@@ -30,10 +31,24 @@ void ASteeringAgent::Tick(float DeltaTime)
 	{
 		SteeringOutput output = SteeringBehavior->CalculateSteering(DeltaTime, *this);
 		AddMovementInput(FVector{output.LinearVelocity, 0.f});
+		
+		if (!IsAutoOrienting())
+		{
+			if (AAIController* AIController = Cast<AAIController>(GetController()))
+			{
+				const float DeltaYaw = FMath::Clamp(output.AngularVelocity, -1, 1) * GetMaxAngularSpeed() * DeltaTime;
 
-		const float YawDeltaDegrees = output.AngularVelocity * DeltaTime;
+				const FRotator CurrentRotation{GetActorForwardVector().ToOrientationRotator()};
+				const FRotator DeltaRotation{ 0, DeltaYaw, 0 };
+				const FRotator DesiredRotation{ CurrentRotation + DeltaRotation };
 
-		AddActorLocalRotation(FRotator(0.f, YawDeltaDegrees, 0.f), false, nullptr, ETeleportType::None);
+				if (!FMath::IsNearlyEqual(CurrentRotation.Yaw, DesiredRotation.Yaw))
+				{
+					AIController->SetControlRotation(DesiredRotation);
+					FaceRotation(DesiredRotation);
+				}
+			}
+		}
 	}
 }
 
