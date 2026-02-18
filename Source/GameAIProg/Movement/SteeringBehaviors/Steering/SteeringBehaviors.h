@@ -55,3 +55,9 @@ class Face : public ISteeringBehavior
 	public:
 		SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
 };
+
+class Wander : public Seek
+{
+	public:
+		SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
+};

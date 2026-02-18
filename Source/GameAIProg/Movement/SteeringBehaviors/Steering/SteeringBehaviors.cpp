@@ -86,6 +86,7 @@ SteeringOutput Arrive::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 SteeringOutput Face::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 {
 	SteeringOutput Output{};
+	Agent.SetIsAutoOrienting(false);
 
 	// NO MOVE ONLY FACE
 	const FVector2D ToTarget = Target.Position - Agent.GetPosition();
@@ -132,4 +133,10 @@ SteeringOutput Face::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 	}
 
 	return Output;
+}
+
+SteeringOutput Wander::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
+{
+	constexpr float CircleRad = 5;
+	return Seek::CalculateSteering(DeltaT, Agent);
 }
