@@ -3,6 +3,8 @@
 #include <Movement/SteeringBehaviors/SteeringHelpers.h>
 #include "Kismet/KismetMathLibrary.h"
 
+#include "Math/UnrealMathUtility.h"
+
 class ASteeringAgent;
 
 // SteeringBehavior base, all steering behaviors should derive from this.
@@ -58,6 +60,15 @@ class Face : public ISteeringBehavior
 
 class Wander : public Seek
 {
-	public:
-		SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
+public:
+	void SetWanderOffset(float offset) { m_OffsetDistance = offset; };
+	void SetWanderRadius(float radius) { m_Radius = radius; };
+	void SetMaxAngleChange(float rad) { m_MaxAngleChange = rad; };
+
+	SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
+private:
+	float m_OffsetDistance = 150;
+	float m_Radius = 100;
+	float m_MaxAngleChange = FMath::DegreesToRadians(45);
+	float m_WanderAngle = 0;
 };
