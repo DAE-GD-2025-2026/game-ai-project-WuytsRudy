@@ -59,7 +59,6 @@ SteeringOutput Arrive::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 	}
 
 	constexpr float SlowRadius = 500.0f;
-	constexpr float TargetRadius = 50.0f;
 	const float DistanceToGo = Output.LinearVelocity.Size();
 
 	if (DistanceToGo < TargetRadius)
@@ -166,4 +165,66 @@ SteeringOutput Wander::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 	}
 
 	return Seek::CalculateSteering(DeltaT, Agent);
+}
+
+SteeringOutput Pursuit::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
+{
+	SteeringOutput Output{};
+
+	const FVector2D AgentPos = Agent.GetPosition();
+	const FVector2D ToTarget = Target.Position - AgentPos;
+	const float Distance = ToTarget.Size();
+
+	if (ToTarget.IsNearlyZero())
+	{
+		return Output;
+	}
+	const float AgentMaxSpeed = Agent.GetMaxLinearSpeed();
+	float PredictionTime = 0.0f;
+	if (AgentMaxSpeed > 0.0f)
+	{
+		PredictionTime = Distance / AgentMaxSpeed;
+	}
+
+	const FVector2D PredictedPosition = Target.Position + Target.LinearVelocity * PredictionTime;
+	const FVector2D OriginalTargetPos = Target.Position;
+	Target.Position = PredictedPosition;
+
+	Output = Seek::CalculateSteering(DeltaT, Agent);
+
+	Target.Position = OriginalTargetPos;
+
+	return Output;
+}
+
+SteeringOutput Evade::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
+{
+	SteeringOutput Output{};
+
+	const FVector2D AgentPos = Agent.GetPosition();
+	const FVector2D ToTarget = Target.Position - AgentPos;
+	const float Distance = ToTarget.Size();
+
+	if (ToTarget.IsNearlyZero())
+	{
+		return Output;
+	}
+
+	const float AgentMaxSpeed = Agent.GetMaxLinearSpeed();
+	float PredictionTime = 0.0f;
+	if (AgentMaxSpeed > 0.0f)
+	{
+		PredictionTime = Distance / AgentMaxSpeed;
+	}
+
+	const FVector2D PredictedPosition = Target.Position + Target.LinearVelocity * PredictionTime;
+	const FVector2D OriginalTargetPos = Target.Position;
+	Target.Position = PredictedPosition;
+
+	// Use Flee so the agent moves away from the predicted future position
+	Output = Flee::CalculateSteering(DeltaT, Agent);
+
+	Target.Position = OriginalTargetPos;
+
+	return Output;
 }

@@ -18,6 +18,7 @@ public:
 	virtual SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent & Agent) = 0;
 
 	void SetTarget(const FTargetData& NewTarget) { Target = NewTarget; }
+	void SetTargetRadius(float Radius) { TargetRadius = Radius; }
 	
 	template<class T, std::enable_if_t<std::is_base_of_v<ISteeringBehavior, T>>* = nullptr>
 	T* As()
@@ -28,6 +29,8 @@ protected:
 
 protected:
 	FTargetData Target;
+
+	float TargetRadius{ 50.f }; 
 };
 
 // Your own SteeringBehaviors should follow here...
@@ -71,4 +74,16 @@ private:
 	float m_Radius = 100;
 	float m_MaxAngleChange = FMath::DegreesToRadians(45);
 	float m_WanderAngle = 0;
+};
+
+class Pursuit : public Seek
+{
+public:
+	SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
+};
+
+class Evade : public Flee
+{
+public:
+	SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
 };
