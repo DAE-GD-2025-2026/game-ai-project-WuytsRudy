@@ -17,6 +17,10 @@ SteeringOutput Seek::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 
 void ISteeringBehavior::DrawDebug(const ASteeringAgent& Agent) const
 {
+	if (!Agent.GetDebugRenderingEnabled())
+	{
+		return;
+	}
 	FVector2D LinearVelocity = Target.Position - Agent.GetPosition();
 
 	const FVector AgentPos{ Agent.GetPosition(), 0.0f };
@@ -77,8 +81,11 @@ SteeringOutput Arrive::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 	const FVector YAxis{ 0.0f, 1.0f, 0.0f };
 	const FVector AgentPos{ Agent.GetPosition(), 0.0f };
 
-	DrawDebugCircle(Agent.GetWorld(), AgentPos, SlowRadius, 12, FColor::Blue, false, -1.0f, 1, 2.0f, XAxis, YAxis);
-	DrawDebugCircle(Agent.GetWorld(), AgentPos, TargetRadius, 12, FColor::Red, false, -1.0f, 1, 2.0f, XAxis, YAxis);
+	if (Agent.GetDebugRenderingEnabled())
+	{
+		DrawDebugCircle(Agent.GetWorld(), AgentPos, SlowRadius, 12, FColor::Blue, false, -1.0f, 1, 2.0f, XAxis, YAxis);
+		DrawDebugCircle(Agent.GetWorld(), AgentPos, TargetRadius, 12, FColor::Red, false, -1.0f, 1, 2.0f, XAxis, YAxis);
+	}
 
 	return Output;
 }
@@ -129,7 +136,10 @@ SteeringOutput Face::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 		const float LineLen = 50.0f;
 		const FVector Dir{ FMath::Cos(OrientationRad), FMath::Sin(OrientationRad), 0.0f };
 		const FVector End = AgentPos + Dir * LineLen;
-		DrawDebugLine(Agent.GetWorld(), AgentPos, End, FColor::Yellow, false, -1.0f, 1, 3.0f);
+		if (Agent.GetDebugRenderingEnabled())
+		{
+			DrawDebugLine(Agent.GetWorld(), AgentPos, End, FColor::Yellow, false, -1.0f, 1, 3.0f);
+		}
 	}
 
 	return Output;
@@ -150,7 +160,10 @@ SteeringOutput Wander::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 	FVector FCenter{Center, 0};
 	const FVector XAxis{ 1.0f, 0.0f, 0.0f };
 	const FVector YAxis{ 0.0f, 1.0f, 0.0f };
-	DrawDebugCircle(Agent.GetWorld(), FCenter, m_Radius, 12, FColor::Blue, false, -1.0f, 1, 2.0f, XAxis, YAxis);
+	if (Agent.GetDebugRenderingEnabled())
+	{
+		DrawDebugCircle(Agent.GetWorld(), FCenter, m_Radius, 12, FColor::Blue, false, -1.0f, 1, 2.0f, XAxis, YAxis);
+	}
 
 	return Seek::CalculateSteering(DeltaT, Agent);
 }

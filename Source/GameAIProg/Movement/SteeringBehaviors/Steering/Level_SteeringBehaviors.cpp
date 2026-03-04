@@ -195,6 +195,7 @@ bool ALevel_SteeringBehaviors::AddAgent(BehaviorTypes BehaviorType, bool AutoOri
 	ImGuiAgent.Agent = GetWorld()->SpawnActor<ASteeringAgent>(SteeringAgentClass, FVector{0,0,90}, FRotator::ZeroRotator);
 	if (IsValid(ImGuiAgent.Agent))
 	{
+		ImGuiAgent.Agent->SetDebugRenderingEnabled(false);
 		ImGuiAgent.SelectedBehavior = static_cast<int>(BehaviorType);
 		ImGuiAgent.SelectedTarget = -1; // Mouse
 		
