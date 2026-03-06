@@ -3,6 +3,8 @@
 #include <algorithm>
 #include "../SteeringAgent.h"
 
+#include "DrawDebugHelpers.h"
+
 BlendedSteering::BlendedSteering(const std::vector<WeightedBehavior>& WeightedBehaviors)
 	:WeightedBehaviors(WeightedBehaviors)
 {};
@@ -11,12 +13,43 @@ BlendedSteering::BlendedSteering(const std::vector<WeightedBehavior>& WeightedBe
 //BLENDED STEERING
 SteeringOutput BlendedSteering::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 {
-	SteeringOutput BlendedSteering = {};
-	// TODO: Calculate the weighted average steeringbehavior
-	
-	// TODO: Add debug drawing
+    SteeringOutput blended = {};
 
-	return BlendedSteering;
+    float totalWeight = 0.f;
+    for (const WeightedBehavior& wb : WeightedBehaviors)
+    {
+        if (wb.pBehavior == nullptr || wb.Weight == 0.f)
+            continue;
+
+        SteeringOutput out = wb.pBehavior->CalculateSteering(DeltaT, Agent);
+
+        blended.LinearVelocity += out.LinearVelocity * wb.Weight;
+        blended.AngularVelocity += out.AngularVelocity * wb.Weight;
+        totalWeight += wb.Weight;
+    }
+
+    if (totalWeight > 0.f)
+    {
+        blended.LinearVelocity /= totalWeight;
+        blended.AngularVelocity /= totalWeight;
+        blended.IsValid = true;
+    }
+    else
+    {
+        blended.IsValid = false;
+    }
+
+    if (Agent.GetDebugRenderingEnabled())
+    {
+        const FVector AgentPos{ Agent.GetPosition(), 0.0f };
+        FVector Dir{ blended.LinearVelocity.X, blended.LinearVelocity.Y, 0.0f };
+        Dir = Dir.GetSafeNormal();
+        const float LineLength = Agent.GetMaxLinearSpeed();
+        const FVector End = AgentPos + Dir * LineLength;
+        DrawDebugLine(Agent.GetWorld(), AgentPos, End, FColor::Green, false, 0.0f, 1, 3.0f);
+    }
+
+    return blended;
 }
 
 float* BlendedSteering::GetWeight(ISteeringBehavior* const SteeringBehavior)

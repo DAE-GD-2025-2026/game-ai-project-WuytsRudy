@@ -86,4 +86,8 @@ class Evade : public Flee
 {
 public:
 	SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
+    void SetActivationDistance(float Dist) { ActivationDistance = Dist; }
+    float GetActivationDistance() const { return ActivationDistance; }
+private:
+    float ActivationDistance{ FLT_MAX };
 };

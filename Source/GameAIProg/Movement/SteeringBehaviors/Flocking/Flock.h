@@ -44,6 +44,13 @@ public:
 
 	void SetTarget_Seek(FSteeringParams const & Target);
 
+    void SetAgentToEvade(ASteeringAgent* const AgentToEvade);
+
+    void SetEvadeDistance(float Dist) { EvadeDistance = Dist; }
+    float GetEvadeDistance() const { return EvadeDistance; }
+
+    void SetEvaderPosition(const FVector2D& Pos);
+
 private:
 	// For debug rendering purposes
 	UWorld* pWorld{nullptr};
@@ -63,16 +70,13 @@ private:
 
 	ASteeringAgent* pAgentToEvade{nullptr};
 	
-	//Steering Behaviors
-	//std::unique_ptr<Separation> pSeparationBehavior{};
-	//std::unique_ptr<Cohesion> pCohesionBehavior{};
-	//std::unique_ptr<VelocityMatch> pVelMatchBehavior{};
-	//std::unique_ptr<Seek> pSeekBehavior{};
-	//std::unique_ptr<Wander> pWanderBehavior{};
-	//std::unique_ptr<Evade> pEvadeBehavior{};
-	
 	std::unique_ptr<BlendedSteering> pBlendedSteering{};
 	std::unique_ptr<PrioritySteering> pPrioritySteering{};
+
+	TArray<ISteeringBehavior*> OwnedBehaviors{};
+    ISteeringBehavior* pEvadeBehavior{ nullptr };
+
+    float EvadeDistance{ 500.f };
 
 	// UI and rendering
 	bool DebugRenderSteering{false};

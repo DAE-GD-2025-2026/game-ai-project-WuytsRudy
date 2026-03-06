@@ -36,8 +36,9 @@ void ISteeringBehavior::DrawDebug(const ASteeringAgent& Agent) const
 	const FVector XAxis{ 1.0f, 0.0f, 0.0f };
 	const FVector YAxis{ 0.0f, 1.0f, 0.0f };
 
-	DrawDebugLine(Agent.GetWorld(), AgentPos, TargetPos, FColor::Green, false, -1.0f, 1, 5.0f);
-	DrawDebugCircle(Agent.GetWorld(), CirclePosition, 20.0f, 12, FColor::Red, false, -1.0f, 1, 2.0f, XAxis, YAxis);
+    // Draw transient debug visuals (0.0f lifetime) so they follow Agent debug toggle correctly
+    DrawDebugLine(Agent.GetWorld(), AgentPos, TargetPos, FColor::Green, false, 0.0f, 1, 5.0f);
+    DrawDebugCircle(Agent.GetWorld(), CirclePosition, 20.0f, 12, FColor::Red, false, 0.0f, 1, 2.0f, XAxis, YAxis);
 }
 
 SteeringOutput Flee::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
@@ -205,10 +206,17 @@ SteeringOutput Evade::CalculateSteering(float DeltaT, ASteeringAgent& Agent)
 	const FVector2D ToTarget = Target.Position - AgentPos;
 	const float Distance = ToTarget.Size();
 
-	if (ToTarget.IsNearlyZero())
-	{
-		return Output;
-	}
+    if (ToTarget.IsNearlyZero())
+    {
+        Output.IsValid = false;
+        return Output;
+    }
+
+    if (Distance > ActivationDistance)
+    {
+        Output.IsValid = false;
+        return Output;
+    }
 
 	const float AgentMaxSpeed = Agent.GetMaxLinearSpeed();
 	float PredictionTime = 0.0f;
