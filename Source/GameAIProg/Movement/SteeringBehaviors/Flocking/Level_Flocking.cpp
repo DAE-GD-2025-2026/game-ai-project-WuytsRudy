@@ -29,7 +29,6 @@ void ALevel_Flocking::BeginPlay()
 			true)
 			);
 
-    // If no agent was assigned in editor, spawn one to test evasion
     if (!pAgentToEvade && SteeringAgentClass)
     {
         const FVector SpawnLoc = FVector(500.f, 0.f, 100.f);
@@ -38,19 +37,18 @@ void ALevel_Flocking::BeginPlay()
         {
             pAgentToEvade = pAgent;
             bSpawnedEvadeAgent = true;
-            // give the evader a simple wander behavior so it moves
+
             auto pWander = new Wander();
             pWander->SetWanderOffset(100.f);
             pWander->SetWanderRadius(50.f);
             pAgent->SetSteeringBehavior(pWander);
             pEvadeAgentBehavior = pWander;
 
-            // inform the flock about the newly spawned agent
             if (pFlock)
                 pFlock->SetAgentToEvade(pAgentToEvade);
         }
     }
-    // always hide the spawned evader initially from debug render (toggleable in UI)
+
     if (pAgentToEvade)
         pAgentToEvade->SetDebugRenderingEnabled(false);
 }

@@ -23,12 +23,30 @@ Flock::Flock(
     {
         if (pWorld && *AgentClass)
         {
-            const FVector SpawnLoc = FVector(FMath::FRandRange(-WorldSize, WorldSize), FMath::FRandRange(-WorldSize, WorldSize), 100.f);
-            ASteeringAgent* pAgent = pWorld->SpawnActor<ASteeringAgent>(AgentClass, SpawnLoc, FRotator::ZeroRotator);
-            if (pAgent)
+            ASteeringAgent* pAgent = nullptr;
+            for (int attempt = 0; attempt < 3 && !pAgent; ++attempt)
             {
+                const FVector SpawnLoc = FVector(FMath::FRandRange(-WorldSize, WorldSize), FMath::FRandRange(-WorldSize, WorldSize), 100.f);
+                pAgent = pWorld->SpawnActor<ASteeringAgent>(AgentClass, SpawnLoc, FRotator::ZeroRotator);
+                if (!pAgent)
+                {
+                    continue;
+                }
+                pAgent->PrimaryActorTick.bCanEverTick = false;
+                pAgent->SetActorTickEnabled(false);
                 Agents[i] = pAgent;
             }
+        }
+    }
+
+    pPartitionedSpace = std::make_unique<CellSpace>(pWorld, WorldSize * 2.f, WorldSize * 2.f, 10, 10, FlockSize + 5);
+    OldPositions.SetNum(Agents.Num());
+    for (int i = 0; i < Agents.Num(); ++i)
+    {
+        if (Agents[i])
+        {
+            pPartitionedSpace->AddAgent(*Agents[i]);
+            OldPositions[i] = Agents[i]->GetPosition();
         }
     }
 
@@ -41,35 +59,48 @@ Flock::Flock(
 
     std::vector<BlendedSteering::WeightedBehavior> weights;
 
-    auto pCoh = new Cohesion(this);
-    auto pSep = new Separation(this);
-    auto pVel = new VelocityMatch(this);
-    auto pSeek = new Seek();
-    auto pWander = new Wander();
-    pWander->SetWanderOffset(50.f);
-    pWander->SetWanderRadius(30.f);
 
-    weights.push_back({ pCoh, 0.3f });
-    weights.push_back({ pSep, 0.5f });
-    weights.push_back({ pVel, 0.2f });
-    weights.push_back({ pSeek, 0.0f });
-    weights.push_back({ pWander, 0.1f });
+    {
+        auto coh = std::make_unique<Cohesion>(this);
+        auto sep = std::make_unique<Separation>(this);
+        auto vel = std::make_unique<VelocityMatch>(this);
+        auto seek = std::make_unique<Seek>();
+        auto wander = std::make_unique<Wander>();
+        wander->SetWanderOffset(50.f);
+        wander->SetWanderRadius(30.f);
+
+
+        OwnedBehaviors.emplace_back(std::move(coh));   
+        OwnedBehaviors.emplace_back(std::move(sep));   
+        OwnedBehaviors.emplace_back(std::move(vel));   
+        OwnedBehaviors.emplace_back(std::move(seek));  
+        OwnedBehaviors.emplace_back(std::move(wander));
+
+
+        weights.push_back({ OwnedBehaviors[0].get(), 0.3f });
+        weights.push_back({ OwnedBehaviors[1].get(), 0.5f });
+        weights.push_back({ OwnedBehaviors[2].get(), 0.2f });
+        weights.push_back({ OwnedBehaviors[3].get(), 0.0f });
+        weights.push_back({ OwnedBehaviors[4].get(), 0.1f });
+    }
 
     pBlendedSteering = std::make_unique<BlendedSteering>(weights);
 
     std::vector<ISteeringBehavior*> pri;
     if (pAgentToEvade)
     {
-        auto pEvade = new Evade();
+        auto pEvade = std::make_unique<Evade>();
 
         FTargetData t;
         t.Position = pAgentToEvade->GetPosition();
         t.LinearVelocity = pAgentToEvade->GetLinearVelocity();
         pEvade->SetTarget(t);
         pEvade->SetActivationDistance(EvadeDistance);
-        pri.push_back(pEvade);
-        OwnedBehaviors.Add(pEvade);
-        pEvadeBehavior = pEvade;
+
+        ISteeringBehavior* pEvadeRaw = pEvade.get();
+        pri.push_back(pEvadeRaw);
+        OwnedBehaviors.emplace_back(std::move(pEvade));
+        pEvadeBehavior = OwnedBehaviors.back().get();
     }
     pri.push_back(pBlendedSteering.get());
 
@@ -86,12 +117,8 @@ void Flock::SetEvaderPosition(const FVector2D& Pos)
 
 Flock::~Flock()
 {
-    // Cleanup any owned raw pointers
-    for (ISteeringBehavior* p : OwnedBehaviors)
-    {
-        delete p;
-    }
-    OwnedBehaviors.Empty();
+
+    OwnedBehaviors.clear();
 }
 
 void Flock::SetAgentToEvade(ASteeringAgent* const AgentToEvade)
@@ -99,16 +126,17 @@ void Flock::SetAgentToEvade(ASteeringAgent* const AgentToEvade)
     pAgentToEvade = AgentToEvade;
     if (pAgentToEvade && !pEvadeBehavior)
     {
-        auto pEvade = new Evade();
+        auto pEvade = std::make_unique<Evade>();
         FTargetData t;
         t.Position = pAgentToEvade->GetPosition();
         t.LinearVelocity = pAgentToEvade->GetLinearVelocity();
         pEvade->SetTarget(t);
         pEvade->SetActivationDistance(EvadeDistance);
-        OwnedBehaviors.Add(pEvade);
-        pEvadeBehavior = pEvade;
 
-        // rebuild priority steering to include evade behavior first
+        ISteeringBehavior* pEvadeRaw = pEvade.get();
+        OwnedBehaviors.emplace_back(std::move(pEvade));
+        pEvadeBehavior = OwnedBehaviors.back().get();
+
         std::vector<ISteeringBehavior*> pri;
         pri.push_back(pEvadeBehavior);
         pri.push_back(pBlendedSteering.get());
@@ -122,7 +150,23 @@ void Flock::Tick(float DeltaTime)
     {
         if (!pAgent) continue;
 
-        RegisterNeighbors(pAgent);
+        if (pPartitionedSpace)
+        {
+            const int idx = Agents.IndexOfByKey(pAgent);
+            if (idx != INDEX_NONE && OldPositions.IsValidIndex(idx))
+            {
+                pPartitionedSpace->UpdateAgentCell(*pAgent, OldPositions[idx]);
+                OldPositions[idx] = pAgent->GetPosition();
+            }
+            pPartitionedSpace->RegisterNeighbors(*pAgent, NeighborhoodRadius);
+
+            Neighbors = pPartitionedSpace->GetNeighbors();
+            NrOfNeighbors = pPartitionedSpace->GetNrOfNeighbors();
+        }
+        else
+        {
+            RegisterNeighbors(pAgent);
+        }
 
         if (pPrioritySteering)
         {
@@ -171,6 +215,11 @@ void Flock::RenderDebug()
 
     if (DebugRenderNeighborhood)
         RenderNeighborhood();
+
+    if (DebugRenderPartitions && pPartitionedSpace)
+    {
+        pPartitionedSpace->RenderCells();
+    }
 }
 
 void Flock::ImGuiRender(ImVec2 const& WindowPos, ImVec2 const& WindowSize)
@@ -224,7 +273,29 @@ void Flock::ImGuiRender(ImVec2 const& WindowPos, ImVec2 const& WindowSize)
       }
 	  }
   ImGui::Checkbox("Debug render neighborhood", &DebugRenderNeighborhood);
-  ImGui::Checkbox("Debug render partitions", &DebugRenderPartitions);
+    if (ImGui::Checkbox("Use spatial partitioning", &UseSpacePartitioning))
+	{
+		if (!UseSpacePartitioning)
+		{
+			pPartitionedSpace.reset();
+		}
+		else
+		{
+            const float worldSize = PartitionWorldSize;
+            pPartitionedSpace = std::make_unique<CellSpace>(pWorld, worldSize * 2.f, worldSize * 2.f, 10, 10, FlockSize + 5);
+
+			OldPositions.SetNum(Agents.Num());
+			for (int i = 0; i < Agents.Num(); ++i)
+			{
+				if (Agents[i])
+				{
+					pPartitionedSpace->AddAgent(*Agents[i]);
+					OldPositions[i] = Agents[i]->GetPosition();
+				}
+			}
+		}
+	}
+	ImGui::Checkbox("Debug render partitions", &DebugRenderPartitions);
   ImGui::Spacing();
   ImGui::Text("Evade");
   ImGui::Indent();

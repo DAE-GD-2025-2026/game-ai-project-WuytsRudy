@@ -62,11 +62,14 @@ private:
 	float CellWidth;
 	float CellHeight;
 
-	// Members to avoid memory allocation on every frame
+
 	TArray<ASteeringAgent*> Neighbors;
 	int NrOfNeighbors;
 
-	// Helper functions
+	ASteeringAgent* pLastQueriedAgent{};
+	float LastQueryRadius{0.f};
+
+
 	int PositionToIndex(FVector2D const & Pos) const;
 	bool DoRectsOverlap(FRect const& RectA, FRect const& RectB);
 };

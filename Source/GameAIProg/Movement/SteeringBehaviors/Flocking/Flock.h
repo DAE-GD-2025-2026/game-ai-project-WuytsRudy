@@ -8,10 +8,9 @@
 #include "Movement/SteeringBehaviors/SteeringHelpers.h"
 #include "Movement/SteeringBehaviors/CombinedSteering/CombinedSteeringBehaviors.h"
 #include <memory>
+#include <vector>
 #include "imgui.h"
-#ifdef GAMEAI_USE_SPACE_PARTITIONING
 #include "../SpacePartitioning/SpacePartitioning.h"
-#endif
 
 class Flock final
 {
@@ -30,14 +29,9 @@ public:
 	void RenderDebug();
 	void ImGuiRender(ImVec2 const& WindowPos, ImVec2 const& WindowSize);
 
-#ifdef GAMEAI_USE_SPACE_PARTITIONING
-	//const TArray<ASteeringAgent*>& GetNeighbors() const { return pPartitionedSpace->GetNeighbors(); }
-	//int GetNrOfNeighbors() const { return pPartitionedSpace->GetNrOfNeighbors(); }
-#else // No space partitioning
-	void RegisterNeighbors(ASteeringAgent* const Agent);
-	int GetNrOfNeighbors() const { return NrOfNeighbors; }
-	const TArray<ASteeringAgent*>& GetNeighbors() const { return Neighbors; }
-#endif // USE_SPACE_PARTITIONING
+    void RegisterNeighbors(ASteeringAgent* const Agent);
+    int GetNrOfNeighbors() const { return NrOfNeighbors; }
+    const TArray<ASteeringAgent*>& GetNeighbors() const { return Neighbors; }
 
 	FVector2D GetAverageNeighborPos() const;
 	FVector2D GetAverageNeighborVelocity() const;
@@ -57,13 +51,12 @@ private:
 	
 	int FlockSize{0};
 	TArray<ASteeringAgent*> Agents{};
-#ifdef GAMEAI_USE_SPACE_PARTITIONING
-	//std::unique_ptr<CellSpace> pPartitionedSpace{};
-	//int NrOfCellsX{ 10 };
-	//TArray<FVector2D> OldPositions{};
-#else // No space partitioning
-	TArray<ASteeringAgent*> Neighbors{};
-#endif // USE_SPACE_PARTITIONING
+    // Partitioning (runtime switchable)
+    std::unique_ptr<CellSpace> pPartitionedSpace{};
+    TArray<FVector2D> OldPositions{};
+
+    // Neighbor list used by behaviors
+    TArray<ASteeringAgent*> Neighbors{};
 	
 	float NeighborhoodRadius{200.f};
 	int NrOfNeighbors{0};
@@ -73,7 +66,9 @@ private:
 	std::unique_ptr<BlendedSteering> pBlendedSteering{};
 	std::unique_ptr<PrioritySteering> pPrioritySteering{};
 
-	TArray<ISteeringBehavior*> OwnedBehaviors{};
+    // Owned behaviors are stored with RAII to avoid raw owning pointers
+    std::vector<std::unique_ptr<ISteeringBehavior>> OwnedBehaviors{};
+    // Non-owning observer to the evade behavior (owned in OwnedBehaviors)
     ISteeringBehavior* pEvadeBehavior{ nullptr };
 
     float EvadeDistance{ 500.f };
@@ -82,6 +77,8 @@ private:
 	bool DebugRenderSteering{false};
 	bool DebugRenderNeighborhood{true};
 	bool DebugRenderPartitions{true};
+    bool UseSpacePartitioning{true};
+    float PartitionWorldSize{1000.f};
 
 	void RenderNeighborhood();
 };

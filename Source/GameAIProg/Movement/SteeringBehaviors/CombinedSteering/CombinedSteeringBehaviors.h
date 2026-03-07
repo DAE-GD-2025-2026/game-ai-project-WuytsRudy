@@ -8,16 +8,17 @@
 class BlendedSteering final: public ISteeringBehavior
 {
 public:
-	struct WeightedBehavior
-	{
-		ISteeringBehavior* pBehavior = nullptr;
-		float Weight = 0.f;
+    struct WeightedBehavior
+    {
+        // non-owning pointer to a behavior (ownership managed elsewhere)
+        ISteeringBehavior* pBehavior = nullptr;
+        float Weight = 0.f;
 
-		WeightedBehavior(ISteeringBehavior* const pBehavior, float Weight) :
-			pBehavior(pBehavior),
-			Weight(Weight)
-		{};
-	};
+        WeightedBehavior(ISteeringBehavior* const pBehavior, float Weight) :
+            pBehavior(pBehavior),
+            Weight(Weight)
+        {};
+    };
 
 	BlendedSteering(const std::vector<WeightedBehavior>& WeightedBehaviors);
 
@@ -40,15 +41,16 @@ private:
 class PrioritySteering final: public ISteeringBehavior
 {
 public:
-	PrioritySteering(const std::vector<ISteeringBehavior*>& priorityBehaviors)
-		:m_PriorityBehaviors(priorityBehaviors) 
-	{}
+    PrioritySteering(const std::vector<ISteeringBehavior*>& priorityBehaviors)
+        :m_PriorityBehaviors(priorityBehaviors)
+    {}
 
 	void AddBehaviour(ISteeringBehavior* const pBehavior) { m_PriorityBehaviors.push_back(pBehavior); }
 	SteeringOutput CalculateSteering(float DeltaT, ASteeringAgent& Agent) override;
 
 private:
-	std::vector<ISteeringBehavior*> m_PriorityBehaviors = {};
+    // priority steering stores non-owning pointers - owners must ensure lifetime
+    std::vector<ISteeringBehavior*> m_PriorityBehaviors = {};
 
 	// using ISteeringBehavior::SetTarget; // made private because targets need to be set on the individual behaviors, not the combined behavior
 };
