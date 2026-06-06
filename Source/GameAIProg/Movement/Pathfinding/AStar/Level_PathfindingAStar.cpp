@@ -168,6 +168,40 @@ void ALevel_PathfindingAStar::CalculatePath()
 		FoundPath = pathfinder.FindPath(startNode, endNode, DebugOpenList, DebugClosedList, GetWorld());
 		UE_LOG(LogTemp, Log, TEXT("New path calculated using %hs"), typeid(pathfinder).name());
 
+		//FALLBACK PATH CODE HERE!!!! HELLOPathFollow.SetPath(pathPositions);
+		if (FoundPath.empty() && !DebugClosedList.empty())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("No path to end node %d — searching for closest reachable node..."), PathEndNodeId);
+
+			FVector2D const EndPos = endNode->GetPosition();
+			TerrainNode* BestNode = nullptr;
+			float BestDist = FLT_MAX;
+
+			for (TerrainNode* pNode : DebugClosedList | std::views::transform([](GameAI::Node* n) { return static_cast<TerrainNode*>(n); }))
+			{
+				if (!pNode || pNode->GetId() == PathStartNodeId) continue;
+
+				float const Dist = FVector2D::DistSquared(pNode->GetPosition(), EndPos);
+				if (Dist < BestDist)
+				{
+					BestDist = Dist;
+					BestNode = pNode;
+				}
+			}
+
+			if (BestNode)
+			{
+				UE_LOG(LogTemp, Log, TEXT("Falling back to closest reachable node: %d (dist: %.1f)"),
+					BestNode->GetId(), FMath::Sqrt(BestDist));
+
+				DebugOpenList.clear();
+				DebugClosedList.clear();
+
+				FoundPath = pathfinder.FindPath(startNode, BestNode, DebugOpenList, DebugClosedList, GetWorld());
+			}
+		}
+		//FALLBACK CODE ENDS HERE HI!
+
 		if (!FoundPath.empty())
 		{
 			float PathCost = 0.f;
@@ -221,11 +255,7 @@ void ALevel_PathfindingAStar::UpdateAgentPath(std::vector<Node*> const& Path)
 	}
 
 	PathFollow.SetPath(pathPositions);
-	if (pathPositions.size() > 0)
-	{
-		Agent->SetPosition(pathPositions[0]);
-		Agent->SetMaxLinearSpeed(300.f);
-	}
+	Agent->SetMaxLinearSpeed(300.f);
 }
 
 void ALevel_PathfindingAStar::UpdateImGui()
@@ -296,10 +326,12 @@ void ALevel_PathfindingAStar::UpdateImGui()
 
 void ALevel_PathfindingAStar::SetStartNodeId()
 {
-	int const NewStart = TerrainGraph->GetNodeIdAtPosition(FVector2D{LatestMouseWorldPos});
+	int const NewStart = TerrainGraph->GetNodeIdAtPosition(FVector2D{ LatestMouseWorldPos });
 	if (NewStart >= 0 && NewStart != PathEndNodeId)
 	{
 		PathStartNodeId = NewStart;
+		TerrainNode* Node = TerrainGraph->GetNodeAs<TerrainNode>(PathStartNodeId);
+		if (Node) Agent->SetPosition(Node->GetPosition());
 		CalculatePath();
 		UE_LOG(LogTemp, Log, TEXT("Start node set to: %d"), PathStartNodeId);
 	}

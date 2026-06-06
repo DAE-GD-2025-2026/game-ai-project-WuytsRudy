@@ -111,6 +111,14 @@ std::vector<Node*> AStar::FindPath(Node* const pStartNode, Node* const pGoalNode
 	{
 		outOpenListNodes.clear();
 		outClosedListNodes.clear();
+		for (const auto& record : openList)
+		{
+			outOpenListNodes.push_back(record.pNode);
+		}
+		for (const auto& record : closedList)
+		{
+			outClosedListNodes.push_back(record.pNode);
+		}
 		return path;
 	}
 
